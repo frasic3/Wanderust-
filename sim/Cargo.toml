@@ -1,0 +1,14 @@
+[package]
+name = "sim"
+version.workspace = true
+edition.workspace = true
+
+# cdylib: artefatto linkabile da JS (output .wasm via wasm-bindgen).
+# rlib: permette di compilare/testare la logica anche nativamente (cargo test).
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde = { workspace = true }
+serde_json = { workspace = true }

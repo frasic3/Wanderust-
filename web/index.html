@@ -1,0 +1,1380 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>georuggine</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    :root {
+      --bg: #0a0d12;
+      --bg-2: #0e1218;
+      --surface: #141923;
+      --surface-2: #1b2230;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --text: #e6e9ef;
+      --text-muted: #8a93a3;
+      --text-dim: #5a6273;
+      --accent: #4f8cff;
+      --accent-2: #fc4c02;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(79, 140, 255, 0.10), transparent 60%),
+        radial-gradient(900px 500px at -10% 100%, rgba(252, 76, 2, 0.08), transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===================== Login fullscreen ===================== */
+    .auth-screen {
+      position: fixed; inset: 0;
+      display: grid; place-items: center;
+      padding: 1rem;
+      background: rgba(10, 13, 18, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+    .auth-screen.hidden { display: none; }
+    .auth-card {
+      width: 100%; max-width: 380px;
+      background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2rem 1.75rem 1.5rem;
+    }
+    .auth-card h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em;
+    }
+    .auth-card .tagline {
+      margin: 0 0 1.5rem;
+      color: var(--text-muted); font-size: 0.9rem;
+    }
+    .field { margin-bottom: 0.75rem; }
+    .field label {
+      display: block; margin-bottom: 0.35rem;
+      font-size: 0.78rem; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .field input {
+      width: 100%; padding: 0.65rem 0.85rem;
+      background: var(--bg-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font); font-size: 0.95rem;
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.18);
+    }
+    .auth-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .auth-actions button { flex: 1; }
+
+    .auth-error {
+      display: none;
+      align-items: center;
+      gap: 0.55rem;
+      margin-top: 1rem;
+      padding: 0.65rem 0.8rem;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: var(--radius-sm);
+      color: #fca5a5;
+      font-size: 0.85rem;
+      line-height: 1.3;
+      animation: shake 0.35s ease;
+    }
+    .auth-error.visible { display: flex; }
+    .auth-error svg { flex-shrink: 0; color: var(--danger); }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-4px); }
+      40%, 80% { transform: translateX(4px); }
+    }
+
+    /* ===================== Buttons ===================== */
+    button {
+      cursor: pointer;
+      font-family: var(--font); font-size: 0.9rem; font-weight: 500;
+      padding: 0.6rem 0.95rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--surface-2);
+      color: var(--text);
+      transition: background 0.15s, border-color 0.15s, transform 0.05s;
+    }
+    button:hover { background: #232b3c; border-color: rgba(255, 255, 255, 0.22); }
+    button:active { transform: translateY(1px); }
+    button.primary {
+      background: var(--accent);
+      border-color: transparent;
+      color: white;
+    }
+    button.primary:hover { background: #6a9dff; }
+    button.danger {
+      background: transparent;
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    button.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); }
+    button.ghost {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+    button.ghost:hover { color: var(--text); border-color: var(--border-strong); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ===================== Dashboard ===================== */
+    .dashboard {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    .dashboard.hidden { display: none; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 1.1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .brand {
+      display: flex; align-items: center; gap: 0.65rem;
+      font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em;
+    }
+    .brand-mark {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: url('/assets/logo.jpeg') center/cover no-repeat;
+      box-shadow: 0 4px 14px rgba(79, 140, 255, 0.35);
+    }
+    .user-info { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .user-info .who { color: var(--text-muted); font-size: 0.88rem; }
+    .user-info .who strong { color: var(--text); font-weight: 600; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem; font-weight: 500;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .pill .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--text-dim);
+    }
+    .pill.ok { color: #86efac; border-color: rgba(34, 197, 94, 0.3); }
+    .pill.ok .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .pill.warn { color: #fcd34d; border-color: rgba(245, 158, 11, 0.3); }
+    .pill.warn .dot { background: var(--warn); }
+    .pill.bad { color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+    .pill.bad .dot { background: var(--danger); }
+
+    /* Grid principale */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    @media (min-width: 980px) {
+      .grid { grid-template-columns: 2fr 1fr; }
+      .grid .full { grid-column: 1 / -1; }
+    }
+
+    /* Card generica */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.85rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-header h2 {
+      margin: 0;
+      font-size: 0.85rem; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .card-header .actions { display: flex; gap: 0.4rem; }
+    .card-body { padding: 1rem 1.1rem; }
+    .card-body.tight { padding: 0; }
+
+    /* Mappa */
+    #map {
+      height: 480px;
+      background: var(--bg-2);
+    }
+    .map-overlay {
+      position: relative;
+    }
+    .map-overlay .floating-actions {
+      position: absolute;
+      left: 12px; bottom: 12px;
+      display: flex; gap: 0.5rem;
+      z-index: 500;
+    }
+    .floating-actions button {
+      backdrop-filter: blur(10px);
+      background: rgba(20, 25, 35, 0.85);
+      border-color: var(--border-strong);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+    .floating-actions button.primary {
+      background: var(--accent-2);
+      border-color: transparent;
+      color: white;
+    }
+    .floating-actions button.primary:hover { background: #ff6b2b; }
+
+    /* CPU stats */
+    .cpu-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .metric {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 0.95rem;
+    }
+    .metric .label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 0.3rem;
+    }
+    .metric .value {
+      font-size: 1.4rem; font-weight: 600;
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric .sub {
+      font-size: 0.75rem; color: var(--text-dim); margin-top: 0.15rem;
+    }
+    #cpu-chart {
+      width: 100%; height: 80px;
+      display: block;
+      border-radius: var(--radius-sm);
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+    }
+    .cpu-empty {
+      color: var(--text-muted); font-size: 0.88rem;
+      text-align: center; padding: 1.5rem 0;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .tab {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font-weight: 500; font-size: 0.85rem;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      border-radius: 0;
+    }
+    .tab:hover { color: var(--text); background: transparent; }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Chat */
+    #chat-log {
+      height: 260px;
+      overflow-y: auto;
+      padding: 0.85rem 1rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+      background: var(--bg-2);
+    }
+    .msg {
+      max-width: 80%;
+      padding: 0.5rem 0.75rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      line-height: 1.35;
+      word-wrap: break-word;
+    }
+    .msg .from { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.15rem; font-weight: 500; }
+    .msg.sys {
+      align-self: center; text-align: center;
+      background: transparent; color: var(--text-dim);
+      font-size: 0.78rem; font-style: italic;
+      border: 1px dashed var(--border); padding: 0.35rem 0.75rem;
+    }
+    .msg.in {
+      align-self: flex-start;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+    .msg.out {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #2a5fc7, var(--accent));
+      color: white;
+      border: 1px solid transparent;
+    }
+    .chat-input {
+      display: flex; gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 0.6rem 0.85rem;
+      background: var(--bg-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font: inherit; font-size: 0.9rem;
+      outline: none;
+    }
+    .chat-input input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.18);
+    }
+
+    /* Trip stats panel */
+    .stats-form {
+      display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.6rem;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      align-items: end;
+    }
+    .stats-form .field { margin: 0; }
+    .stats-form .field input {
+      padding: 0.5rem 0.7rem; font-size: 0.85rem;
+      background: var(--bg-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font: inherit; outline: none;
+    }
+    #stats-result {
+      padding: 0.85rem 1rem;
+      min-height: 120px;
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+    }
+    .stats-empty {
+      color: var(--text-muted); font-size: 0.88rem;
+      text-align: center; padding: 1rem 0;
+    }
+
+    /* Stato utente */
+    .status-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .status-row {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 0.8rem;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .status-row .k {
+      font-size: 0.75rem; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .status-row .v {
+      font-size: 0.9rem; font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      max-width: 60%; text-align: right;
+      word-break: break-all;
+    }
+    .status-row .v.mono { font-family: var(--mono); font-size: 0.82rem; }
+
+    /* Debug log collassabile */
+    details.debug {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    details.debug > summary {
+      padding: 0.7rem 1.1rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      list-style: none;
+      user-select: none;
+    }
+    details.debug > summary::-webkit-details-marker { display: none; }
+    details.debug[open] > summary { border-bottom: 1px solid var(--border); }
+    #log {
+      max-height: 220px; overflow-y: auto;
+      padding: 0.75rem 1rem;
+      background: var(--bg-2);
+      font-family: var(--mono); font-size: 0.78rem; line-height: 1.5;
+      color: #9ca3af;
+      white-space: pre-wrap; word-break: break-all;
+      margin: 0;
+    }
+    #log .tx { color: #93c5fd; }
+    #log .rx { color: #86efac; }
+    #log .sys { color: var(--text-dim); }
+    #log .err { color: #fca5a5; }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 10px; border: 2px solid var(--bg); }
+    ::-webkit-scrollbar-thumb:hover { background: #2a3346; }
+
+    /* Leaflet recenter button override */
+    .leaflet-control button {
+      font: inherit !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== Auth screen ===================== -->
+  <div class="auth-screen" id="auth-screen">
+    <div class="auth-card">
+      <h1>georuggine</h1>
+      <p class="tagline">Login per iniziare a tracciare i tuoi spostamenti.</p>
+      <div class="field">
+        <label for="user">Username</label>
+        <input id="user" type="text" autocomplete="username" placeholder="es. pippo" value="pippo">
+      </div>
+      <div class="field">
+        <label for="pass">Password</label>
+        <input id="pass" type="password" autocomplete="current-password" placeholder="•••••••" value="secret">
+      </div>
+      <div class="auth-actions">
+        <button class="ghost" onclick="doRegister()">Registrati</button>
+        <button class="primary" onclick="doLogin()">Accedi</button>
+      </div>
+      <div class="auth-error" id="auth-error" role="alert" aria-live="polite">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span id="auth-error-text"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Dashboard ===================== -->
+  <div class="dashboard hidden" id="dashboard">
+
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <span>georuggine</span>
+      </div>
+      <div class="user-info">
+        <span class="who">Utente: <strong id="who-user">—</strong></span>
+        <span id="conn-pill" class="pill"><span class="dot"></span><span>—</span></span>
+        <button class="danger" onclick="doQuit()">Disconnetti</button>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <!-- Mappa (full width on small, 2fr on desktop) -->
+      <div class="card full">
+        <div class="card-header">
+          <h2>Mappa · Torino</h2>
+          <div class="actions">
+            <span id="trip-pill" class="pill"><span class="dot"></span><span>Nessun trip</span></span>
+          </div>
+        </div>
+        <div class="card-body tight map-overlay">
+          <div id="map"></div>
+          <div class="floating-actions">
+            <button id="btn-center" onclick="recenterMap()">Centra</button>
+            <button id="btn-trip" class="primary" onclick="toggleTrip()">Start Trip</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CPU stats (full width) -->
+      <div class="card full">
+        <div class="card-header">
+          <h2>CPU del server · ultimi campionamenti</h2>
+          <div class="actions">
+            <button class="ghost" onclick="refreshCpu()" title="Rilegge server_cpu.log. Il server registra un nuovo campione ogni 2 minuti.">Ricarica log</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="cpu-metrics" id="cpu-metrics">
+            <div class="metric">
+              <div class="label">Uso CPU (intervallo)</div>
+              <div class="value" id="cpu-pct">—</div>
+              <div class="sub" id="cpu-pct-sub">ultimi 2 min, normalizzato sui core</div>
+            </div>
+            <div class="metric">
+              <div class="label">CPU totale</div>
+              <div class="value" id="cpu-total">—</div>
+              <div class="sub">dall'avvio del server</div>
+            </div>
+            <div class="metric">
+              <div class="label">Campioni</div>
+              <div class="value" id="cpu-samples">—</div>
+              <div class="sub">registrati</div>
+            </div>
+            <div class="metric">
+              <div class="label">Ultimo campione</div>
+              <div class="value" id="cpu-last-time">—</div>
+              <div class="sub" id="cpu-last-sub">UTC</div>
+            </div>
+          </div>
+          <canvas id="cpu-chart"></canvas>
+          <div id="cpu-empty" class="cpu-empty" style="display:none">
+            Nessun campione disponibile. Il logger scrive ogni 2 minuti su <code>server_cpu.log</code>.
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat + Stats tabs -->
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" data-tab="chat">Chat</button>
+          <button class="tab" data-tab="stats">Trip Stats</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-chat">
+          <div id="chat-log"></div>
+          <div class="chat-input">
+            <input id="chat" type="text" placeholder='Scrivi al server…'>
+            <button class="primary" onclick="doChat()">Invia</button>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-stats">
+          <div class="stats-form">
+            <div class="field">
+              <label>Da</label>
+              <input id="stats-from" type="datetime-local">
+            </div>
+            <div class="field">
+              <label>A</label>
+              <input id="stats-to" type="datetime-local">
+            </div>
+            <button class="primary" onclick="doStats()">Calcola</button>
+          </div>
+          <div id="stats-result">
+            <div class="stats-empty">Seleziona un intervallo e premi <strong>Calcola</strong>.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stato utente -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Stato utente</h2>
+        </div>
+        <div class="card-body">
+          <div class="status-list">
+            <div class="status-row">
+              <span class="k">Username</span>
+              <span class="v" id="st-user">—</span>
+            </div>
+            <div class="status-row">
+              <span class="k">Token</span>
+              <span class="v mono" id="st-token">—</span>
+            </div>
+            <div class="status-row">
+              <span class="k">Connessione</span>
+              <span class="v" id="st-conn">—</span>
+            </div>
+            <div class="status-row">
+              <span class="k">Trip ID</span>
+              <span class="v" id="st-trip">—</span>
+            </div>
+            <div class="status-row">
+              <span class="k">Stato moto</span>
+              <span class="v" id="st-motion">—</span>
+            </div>
+            <div class="status-row">
+              <span class="k">Velocità</span>
+              <span class="v" id="st-speed">0 km/h</span>
+            </div>
+            <div class="status-row">
+              <span class="k">Durata trip</span>
+              <span class="v" id="st-duration">—</span>
+            </div>
+            <div class="status-row">
+              <span class="k">Distanza trip</span>
+              <span class="v" id="st-distance">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Debug log -->
+      <details class="debug full">
+        <summary>Debug log WebSocket</summary>
+        <div id="log"></div>
+      </details>
+
+    </div>
+  </div>
+
+<!-- ====================== WebSocket + app state ====================== -->
+<script>
+const WS_URL = (() => {
+  if (location.protocol === "http:" || location.protocol === "https:") {
+    const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+    return `${wsProto}//${location.host}/ws`;
+  }
+  return "ws://127.0.0.1:7878/ws";
+})();
+
+const app = {
+  ws: null,
+  username: null,
+  token: null,
+  tripId: null,
+  tripActive: false,
+  tripTs: 0,
+  tripStartMs: 0,
+  tripDistanceM: 0,
+  pending: [],
+  intentionalQuit: false,
+  // True quando la WS è stata aperta con una sessione salvata da riprendere
+  // tramite RESUME: serve a distinguere AUTH_OK / ERROR derivati dal resume
+  // automatico da quelli causati da un LOGIN / REGISTER manuale.
+  resuming: false,
+  send,
+};
+window.app = app;
+
+// ------- DOM helpers -------
+const $ = (id) => document.getElementById(id);
+
+function logLine(s, kind = "sys") {
+  const el = $("log");
+  const div = document.createElement("div");
+  div.className = kind;
+  div.textContent = s;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setConn(state) {
+  // state: "connecting" | "open" | "closed"
+  const map = {
+    connecting: { cls: "warn", txt: "in connessione" },
+    open:       { cls: "ok",   txt: "online" },
+    closed:     { cls: "bad",  txt: "offline" },
+  };
+  const m = map[state] || map.closed;
+  const pill = $("conn-pill");
+  if (pill) {
+    pill.className = "pill " + m.cls;
+    pill.innerHTML = `<span class="dot"></span><span>${m.txt}</span>`;
+  }
+  $("st-conn") && ($("st-conn").textContent = m.txt);
+  // Su schermata auth: se WS cade, mostra errore inline. Niente pill "online".
+  if (!isAuthenticated()) {
+    if (state === "closed") showAuthError("Server non raggiungibile. Riprova fra qualche secondo.");
+    else if (state === "open") clearAuthError();
+  }
+}
+
+function isAuthenticated() {
+  return !$("dashboard").classList.contains("hidden");
+}
+
+// ------- Auth error UI -------
+const ERROR_MESSAGES = {
+  AUTH_FAILED:           "Username o password errati.",
+  REGISTER_FAILED:       "Registrazione non riuscita.",
+  ALREADY_AUTHENTICATED: "Sei già autenticato su questa connessione.",
+  BAD_REQUEST:           "Dati non validi.",
+  UNAUTHORIZED:          "Sessione scaduta. Effettua di nuovo l'accesso.",
+};
+
+function friendlyError(code, raw) {
+  const base = ERROR_MESSAGES[code];
+  if (code === "REGISTER_FAILED" && raw) {
+    const r = raw.toLowerCase();
+    if (r.includes("exist") || r.includes("già") || r.includes("duplicat")) return "Username già registrato.";
+    if (r.includes("username")) return "Username non valido (alfanumerici, '_' o '-').";
+    if (r.includes("password")) return "Password non valida.";
+  }
+  return base || raw || "Errore sconosciuto.";
+}
+
+function showAuthError(text) {
+  const box = $("auth-error");
+  $("auth-error-text").textContent = text;
+  box.classList.remove("visible");
+  // restart animation
+  void box.offsetWidth;
+  box.classList.add("visible");
+}
+function clearAuthError() {
+  $("auth-error").classList.remove("visible");
+}
+
+function setTripPill(active) {
+  const pill = $("trip-pill");
+  if (active) {
+    pill.className = "pill ok";
+    pill.innerHTML = `<span class="dot"></span><span>Trip #${app.tripId} in corso</span>`;
+    $("btn-trip").textContent = "End Trip";
+    $("btn-trip").classList.remove("primary");
+    $("btn-trip").classList.add("danger");
+  } else {
+    pill.className = "pill";
+    pill.innerHTML = `<span class="dot"></span><span>Nessun trip</span>`;
+    $("btn-trip").textContent = "Start Trip";
+    $("btn-trip").classList.add("primary");
+    $("btn-trip").classList.remove("danger");
+  }
+  $("st-trip").textContent = active ? `#${app.tripId}` : "—";
+}
+
+function nowSecs() { return Math.floor(Date.now() / 1000); }
+
+// Chiavi sessionStorage per la persistenza della sessione tra refresh
+// pagina. Scope sessionStorage = tab corrente (resiste a F5, non sopravvive
+// alla chiusura del tab), coerente con la TTL lato server (`SESSION_IDLE_TTL`).
+const SS_TOKEN_KEY = "g7_token";
+const SS_USER_KEY  = "g7_user";
+
+function loadStoredSession() {
+  try {
+    const token = sessionStorage.getItem(SS_TOKEN_KEY);
+    const user  = sessionStorage.getItem(SS_USER_KEY);
+    if (token && user) return { token, user };
+  } catch { /* sessionStorage può essere disabilitato in modalità privata */ }
+  return null;
+}
+
+function persistSession(token, user) {
+  try {
+    sessionStorage.setItem(SS_TOKEN_KEY, token);
+    sessionStorage.setItem(SS_USER_KEY,  user);
+  } catch {}
+}
+
+function clearStoredSession() {
+  try {
+    sessionStorage.removeItem(SS_TOKEN_KEY);
+    sessionStorage.removeItem(SS_USER_KEY);
+  } catch {}
+}
+
+// ------- WebSocket -------
+function connect() {
+  if (app.ws && (app.ws.readyState === 0 || app.ws.readyState === 1)) return;
+  app.ws = new WebSocket(WS_URL);
+  setConn("connecting");
+  app.ws.onopen = () => {
+    setConn("open");
+    logLine("[ws] open");
+    // Se c'è una sessione salvata e siamo ancora in pagina di auth, prova
+    // a riprenderla automaticamente con RESUME. Se il server risponde
+    // UNAUTHORIZED (TTL scaduta o invalidata), `handleMessage` su ERROR
+    // pulisce il sessionStorage e l'utente vede la schermata di login.
+    if (!isAuthenticated() && !app.token) {
+      const saved = loadStoredSession();
+      if (saved) {
+        app.resuming = true;
+        app.username = saved.user;
+        logLine("[ws] tentativo resume sessione…");
+        const s = JSON.stringify({ type: "RESUME", token: saved.token });
+        logLine("TX " + s, "tx");
+        app.ws.send(s);
+      }
+    }
+    while (app.pending.length && app.ws.readyState === 1) {
+      const s = app.pending.shift();
+      logLine("TX " + s, "tx");
+      app.ws.send(s);
+    }
+  };
+  app.ws.onclose = e => {
+    logLine("[ws] close " + e.code);
+    app.tripActive = false;
+    setTripPill(false);
+    if (window.despawn) window.despawn();
+    if (app.intentionalQuit) {
+      // logout volontario: server chiude WS dopo DISCONNECT.
+      // Niente errore "Server non raggiungibile". Riapre WS per prossimo login.
+      app.intentionalQuit = false;
+      setTimeout(connect, 100);
+      return;
+    }
+    setConn("closed");
+  };
+  app.ws.onerror = () => logLine("[ws] error", "err");
+  app.ws.onmessage = e => {
+    logLine("RX " + e.data, "rx");
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    handleMessage(m);
+  };
+}
+
+function handleMessage(m) {
+  switch (m.type) {
+    case "AUTH_OK":
+      app.token = m.token;
+      // Su LOGIN/REGISTER lo username viene dal campo input. Su RESUME
+      // il campo input è vuoto e lo username arriva da sessionStorage
+      // (impostato in `connect()` prima di mandare il RESUME).
+      if (!app.resuming) {
+        const formUser = $("user").value.trim();
+        if (formUser) app.username = formUser;
+      }
+      app.resuming = false;
+      persistSession(m.token, app.username);
+      $("who-user").textContent = app.username;
+      $("st-user").textContent = app.username;
+      $("st-token").textContent = m.token.slice(0, 12) + "…";
+      showDashboard();
+      if (window.respawn) window.respawn();
+      break;
+    case "TRIP_STARTED":
+      app.tripId = m.trip_id;
+      app.tripActive = true;
+      app.tripStartMs = Date.now();
+      app.tripDistanceM = 0;
+      setTripPill(true);
+      break;
+    case "MESSAGE":
+      appendChatMessage(m.from, m.text);
+      break;
+    case "STATS_RESULT":
+      renderStats(m);
+      break;
+    case "ERROR":
+      // Errore durante un tentativo di RESUME: la sessione salvata non è
+      // più valida lato server (scaduta o invalidata). Pulisci storage,
+      // resetta lo stato e lascia che l'utente faccia login da zero.
+      // Nessun banner di errore: il timeout di sessione è normale e
+      // confonderebbe l'utente con un messaggio di "credenziali errate".
+      if (app.resuming) {
+        app.resuming = false;
+        app.username = null;
+        clearStoredSession();
+        break;
+      }
+      if (!isAuthenticated()) {
+        showAuthError(friendlyError(m.code, m.message));
+      } else {
+        appendSysMessage("Errore: " + (m.message || m.code));
+      }
+      break;
+    case "ACK":
+      break;
+  }
+}
+
+function send(obj) {
+  const s = JSON.stringify(obj);
+  if (!app.ws || app.ws.readyState >= 2) {
+    logLine("[ws] riconnessione…");
+    app.pending.push(s);
+    connect();
+    return;
+  }
+  if (app.ws.readyState === 0) { app.pending.push(s); return; }
+  logLine("TX " + s, "tx");
+  app.ws.send(s);
+}
+
+// ------- Auth actions -------
+function showDashboard() {
+  $("auth-screen").classList.add("hidden");
+  $("dashboard").classList.remove("hidden");
+  // Leaflet ha bisogno di un invalidate dopo il display change
+  setTimeout(() => window.map && window.map.invalidateSize(), 50);
+}
+function showAuth() {
+  $("auth-screen").classList.remove("hidden");
+  $("dashboard").classList.add("hidden");
+}
+
+function validateCreds() {
+  const u = $("user").value.trim();
+  const p = $("pass").value;
+  if (!u) { showAuthError("Inserisci uno username."); return null; }
+  if (!/^[A-Za-z0-9_-]+$/.test(u)) { showAuthError("Username: solo lettere, numeri, '_' o '-'."); return null; }
+  if (u.length > 32) { showAuthError("Username troppo lungo (max 32)."); return null; }
+  if (!p) { showAuthError("Inserisci una password."); return null; }
+  if (p.length > 128) { showAuthError("Password troppo lunga (max 128)."); return null; }
+  return { username: u, password: p };
+}
+function doRegister() { const c = validateCreds(); if (c) send({ type: "REGISTER", ...c }); }
+function doLogin()    { const c = validateCreds(); if (c) send({ type: "LOGIN", ...c }); }
+
+function toggleTrip() {
+  if (!app.tripActive) doStart();
+  else doEnd();
+}
+
+function doStart() {
+  if (!app.token) return logLine("[!] login prima", "err");
+  if (!window.sim) return logLine("[!] simulatore non pronto", "err");
+  app.tripTs = nowSecs();
+  if (window.startTrail) window.startTrail();
+  send({ type: "START_TRIP", token: app.token, lat: window.sim.lat, lon: window.sim.lon, ts: app.tripTs });
+}
+
+function doEnd() {
+  if (!app.token || !app.tripId) return logLine("[!] nessun trip aperto", "err");
+  send({ type: "END_TRIP", token: app.token, trip_id: app.tripId, ts: nowSecs() });
+  app.tripActive = false;
+  setTripPill(false);
+}
+
+function doChat() {
+  if (!app.token) return logLine("[!] login prima", "err");
+  const text = $("chat").value.trim();
+  if (!text) return;
+  // Echo locale come messaggio "out"
+  appendOwnMessage(text);
+  send({ type: "CHAT", token: app.token, text });
+  $("chat").value = "";
+}
+
+function doQuit() {
+  if (app.token) {
+    app.intentionalQuit = true;
+    send({ type: "DISCONNECT", token: app.token });
+  }
+  app.tripActive = false;
+  app.token = null;
+  app.tripId = null;
+  app.username = null;
+  // Logout volontario: scarta la sessione persistente, così alla
+  // prossima apertura del tab non viene tentato un RESUME su un token
+  // che il server sta per invalidare con DISCONNECT.
+  clearStoredSession();
+  setTripPill(false);
+  if (window.despawn) window.despawn();
+  showAuth();
+  clearAuthError();
+}
+
+// ------- Chat rendering -------
+function appendChatMessage(from, text) {
+  if (!from) { appendSysMessage(text); return; }
+  if (from === app.username) return; // già mostrato come "out"
+  const el = $("chat-log");
+  const div = document.createElement("div");
+  div.className = "msg in";
+  div.innerHTML = `<div class="from">${escapeHtml(from)}</div>${escapeHtml(text)}`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+function appendOwnMessage(text) {
+  const el = $("chat-log");
+  const div = document.createElement("div");
+  div.className = "msg out";
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+function appendSysMessage(text) {
+  const el = $("chat-log");
+  const div = document.createElement("div");
+  div.className = "msg sys";
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
+
+// Enter su chat → invia
+document.addEventListener("DOMContentLoaded", () => {
+  $("chat").addEventListener("keydown", e => { if (e.key === "Enter") doChat(); });
+  $("pass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+  for (const id of ["user", "pass"]) {
+    $(id).addEventListener("input", clearAuthError);
+  }
+
+  // Tab switching
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      $("tab-" + tab.dataset.tab).classList.add("active");
+    });
+  });
+
+  // Stats: precompila intervallo = ultime 24h
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 3600 * 1000);
+  $("stats-from").value = toLocalISO(yesterday);
+  $("stats-to").value = toLocalISO(now);
+
+  // CPU: prima fetch + auto-refresh allineato al campionamento server (130s).
+  refreshCpu();
+  setInterval(refreshCpu, 130_000);
+});
+
+function toLocalISO(d) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ------- Stats -------
+function doStats() {
+  if (!app.token) return logLine("[!] login prima", "err");
+  const from = $("stats-from").value;
+  const to = $("stats-to").value;
+  if (!from || !to) return;
+  const from_ts = Math.floor(new Date(from).getTime() / 1000);
+  const to_ts   = Math.floor(new Date(to).getTime() / 1000);
+  $("stats-result").innerHTML = `<div class="stats-empty">Calcolo in corso…</div>`;
+  send({ type: "STATS", token: app.token, from_ts, to_ts });
+}
+
+function renderStats(m) {
+  const km = (m.distance_m / 1000).toFixed(2);
+  const move = fmtDuration(m.movement_secs);
+  const pause = fmtDuration(m.pause_secs);
+  const total = fmtDuration(m.total_secs);
+  $("stats-result").innerHTML = `
+    <div class="stats-grid">
+      <div class="metric"><div class="label">Distanza</div><div class="value">${km}<span style="font-size:.7em;color:var(--text-muted)"> km</span></div></div>
+      <div class="metric"><div class="label">Vel. media</div><div class="value">${m.avg_speed_kmh.toFixed(1)}<span style="font-size:.7em;color:var(--text-muted)"> km/h</span></div></div>
+      <div class="metric"><div class="label">In movimento</div><div class="value" style="font-size:1.1rem">${move}</div></div>
+      <div class="metric"><div class="label">In pausa</div><div class="value" style="font-size:1.1rem">${pause}</div></div>
+      <div class="metric"><div class="label">Totale</div><div class="value" style="font-size:1.1rem">${total}</div></div>
+    </div>
+  `;
+}
+
+function fmtDuration(secs) {
+  secs = Math.max(0, Math.floor(secs));
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h) return `${h}h ${m}m`;
+  if (m) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+// ------- CPU stats (server_cpu.log via /cpu_log) -------
+async function refreshCpu() {
+  try {
+    const r = await fetch("/cpu_log", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const txt = await r.text();
+    const samples = parseCpuLog(txt);
+    renderCpu(samples);
+  } catch (e) {
+    logLine("[cpu_log] " + e.message, "err");
+  }
+}
+
+// Parse righe nel formato:
+//   "[wall] [HH:MM:SS UTC]  cpu_totale=N.NNNs  cpu_intervallo_2min=N.NNNs  cpu_pct=N.NN%  cores=N"
+// Il campo `cores` è stato aggiunto in seguito: regex tollerante alle righe
+// vecchie senza `cores` (default 1) per non rompere log pre-esistenti.
+function parseCpuLog(txt) {
+  const out = [];
+  for (const line of txt.split(/\r?\n/)) {
+    const m = line.match(/^\[(\d+)\]\s+\[(\d{2}:\d{2}:\d{2})\s+UTC\]\s+cpu_totale=([\d.]+)s\s+cpu_intervallo_2min=([\d.]+)s\s+cpu_pct=([\d.]+)%(?:\s+cores=(\d+))?/);
+    if (!m) continue;
+    out.push({
+      wall: +m[1],
+      time: m[2],
+      total: +m[3],
+      interval: +m[4],
+      pct: +m[5],
+      cores: m[6] ? +m[6] : 1,
+    });
+  }
+  return out;
+}
+
+let lastCpuSample = null;
+
+function renderCpu(samples) {
+  if (!samples.length) {
+    $("cpu-empty").style.display = "block";
+    $("cpu-pct").textContent = "—";
+    $("cpu-total").textContent = "—";
+    $("cpu-samples").textContent = "0";
+    $("cpu-last-time").textContent = "—";
+    $("cpu-pct-sub").textContent = "ultimi 2 min";
+    lastCpuSample = null;
+    drawCpuChart([]);
+    return;
+  }
+  $("cpu-empty").style.display = "none";
+  const last = samples[samples.length - 1];
+  lastCpuSample = last;
+  // Mostra esattamente i valori scritti nel log: `cpu_pct` normalizzato sui
+  // core con 2 decimali, e `cpu_intervallo_2min` in secondi con 3 decimali.
+  $("cpu-pct").innerHTML = `${last.pct.toFixed(2)}<span style="font-size:.7em;color:var(--text-muted)"> %</span>`;
+  $("cpu-pct-sub").textContent =
+    `cpu_intervallo_2min=${last.interval.toFixed(3)}s su ${last.cores} core`;
+  $("cpu-total").innerHTML = formatCpuTotal(last.total);
+  $("cpu-samples").textContent = samples.length;
+  // Server scrive l'orario in UTC. Mostra al posto suo l'ora locale del
+  // browser (es. Europe/Rome), così l'utente confronta con l'orologio di
+  // sistema senza dover fare la conversione a mente.
+  const localDate = new Date(last.wall * 1000);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+  const hh = String(localDate.getHours()).padStart(2, "0");
+  const mm = String(localDate.getMinutes()).padStart(2, "0");
+  const ss = String(localDate.getSeconds()).padStart(2, "0");
+  $("cpu-last-time").textContent = `${hh}:${mm}:${ss}`;
+  $("cpu-last-sub").textContent = tz;
+  drawCpuChart(samples);
+}
+
+// Mostra CPU totale come durata leggibile (es. "3h 12m") invece di secondi
+// grezzi. Sotto i 60 secondi mantiene la notazione `Ns`.
+function formatCpuTotal(secs) {
+  if (secs < 60) {
+    return `${secs.toFixed(1)}<span style="font-size:.7em;color:var(--text-muted)"> s</span>`;
+  }
+  const total = Math.floor(secs);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) {
+    return `${h}<span style="font-size:.7em;color:var(--text-muted)">h </span>${m}<span style="font-size:.7em;color:var(--text-muted)">m</span>`;
+  }
+  return `${m}<span style="font-size:.7em;color:var(--text-muted)">m </span>${s}<span style="font-size:.7em;color:var(--text-muted)">s</span>`;
+}
+
+function drawCpuChart(samples) {
+  const c = $("cpu-chart");
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w * dpr; c.height = h * dpr;
+  const ctx = c.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  if (!samples.length) return;
+
+  const pts = samples.slice(-60); // ultimi 60 campioni
+  const maxP = Math.max(1, ...pts.map(s => s.pct));
+  const pad = 6;
+  const stepX = (w - pad * 2) / Math.max(1, pts.length - 1);
+
+  // Linea
+  ctx.beginPath();
+  pts.forEach((s, i) => {
+    const x = pad + i * stepX;
+    const y = h - pad - (s.pct / maxP) * (h - pad * 2);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  // Area sotto la curva
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, "rgba(79, 140, 255, 0.35)");
+  grad.addColorStop(1, "rgba(79, 140, 255, 0.02)");
+  ctx.lineTo(pad + (pts.length - 1) * stepX, h - pad);
+  ctx.lineTo(pad, h - pad);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Linea sopra
+  ctx.beginPath();
+  pts.forEach((s, i) => {
+    const x = pad + i * stepX;
+    const y = h - pad - (s.pct / maxP) * (h - pad * 2);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = "#4f8cff";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function recenterMap() {
+  window.followUser = true;
+  const sim = window.sim;
+  if (sim && window.map) window.map.setView([sim.lat, sim.lon], 16);
+}
+
+connect();
+</script>
+
+<!-- ====================== WASM simulator + map ====================== -->
+<script type="module">
+import init, { Simulator } from "./pkg/sim.js";
+
+const ANIM_MS = 100;
+const SEND_SECS = 30;
+const TIME_SCALE = 1;
+
+const CENTER = [45.0703, 7.6869];
+const FOLLOW_ZOOM = 16;
+
+await init();
+const graphJson = await fetch("/data/graph.json").then(r => {
+  if (!r.ok) throw new Error("graph.json non trovato (genera con tools/export_turin_graph.py)");
+  return r.text();
+});
+window.sim = null;
+
+// Mappa: tile layer scuro per matching col tema
+const map = L.map("map", { zoomControl: true, attributionControl: true }).setView(CENTER, 13);
+window.map = map;
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  maxZoom: 19,
+  subdomains: "abcd",
+  attribution: "&copy; OpenStreetMap &copy; CARTO",
+}).addTo(map);
+
+window.followUser = true;
+map.on("dragstart", () => { window.followUser = false; });
+
+// Pallino e scia
+const dotIcon = L.divIcon({
+  className: "",
+  html: '<div style="width:14px;height:14px;border-radius:50%;background:#4f8cff;border:3px solid #fff;box-shadow:0 0 12px rgba(79,140,255,.75)"></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+const marker = L.marker(CENTER, { icon: dotIcon });
+const trail = L.polyline([], { color: "#fc4c02", weight: 4, opacity: 0.9 });
+
+window.respawn = () => {
+  const sim = new Simulator(graphJson, Date.now() + Math.random() * 1e6);
+  window.sim = sim;
+  marker.setLatLng([sim.lat, sim.lon]).addTo(map);
+  trail.setLatLngs([]).addTo(map);
+  window.followUser = true;
+  map.setView([sim.lat, sim.lon], FOLLOW_ZOOM);
+};
+
+window.despawn = () => {
+  window.sim = null;
+  marker.remove();
+  trail.remove();
+};
+
+window.startTrail = () => {
+  const sim = window.sim;
+  if (!sim) return;
+  trail.setLatLngs([[sim.lat, sim.lon]]);
+  if (window.followUser) map.panTo([sim.lat, sim.lon]);
+};
+
+let sinceSend = 0;
+let wasActive = false;
+let lastLat = null, lastLon = null;
+
+// Distanza Haversine (m) per stima distanza trip lato client.
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function fmt(s) {
+  s = Math.max(0, Math.floor(s));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  if (h) return `${h}h ${m}m`;
+  if (m) return `${m}m ${x}s`;
+  return `${x}s`;
+}
+
+setInterval(() => {
+  const sim = window.sim;
+  if (!sim) {
+    document.getElementById("st-motion").textContent = "—";
+    document.getElementById("st-speed").textContent  = "0 km/h";
+    return;
+  }
+  const dt = (ANIM_MS / 1000) * TIME_SCALE;
+  sim.advance(dt);
+  const lat = sim.lat, lon = sim.lon;
+
+  marker.setLatLng([lat, lon]);
+  document.getElementById("st-motion").textContent = sim.moving ? "in movimento" : "fermo";
+  document.getElementById("st-speed").textContent  = sim.moving ? `${sim.speed_kmh.toFixed(0)} km/h` : "0 km/h";
+
+  if (window.followUser) map.setView([lat, lon], map.getZoom(), { animate: false });
+
+  const app = window.app;
+  if (app.tripActive && app.tripId != null) {
+    if (!wasActive) {
+      sinceSend = 0; wasActive = true;
+      lastLat = lat; lastLon = lon;
+    } else if (sim.moving && lastLat != null) {
+      app.tripDistanceM += haversine(lastLat, lastLon, lat, lon);
+      lastLat = lat; lastLon = lon;
+    }
+    if (sim.moving) trail.addLatLng([lat, lon]);
+
+    // Live stats lato Stato utente
+    const durSec = (Date.now() - app.tripStartMs) / 1000;
+    document.getElementById("st-duration").textContent = fmt(durSec);
+    document.getElementById("st-distance").textContent = (app.tripDistanceM / 1000).toFixed(2) + " km";
+
+    sinceSend += dt;
+    if (sinceSend >= SEND_SECS) {
+      sinceSend -= SEND_SECS;
+      app.tripTs += SEND_SECS;
+      app.send({
+        type: "POSITION",
+        token: app.token,
+        trip_id: app.tripId,
+        lat, lon,
+        ts: app.tripTs,
+      });
+    }
+  } else {
+    wasActive = false;
+    lastLat = lastLon = null;
+    document.getElementById("st-duration").textContent = "—";
+    document.getElementById("st-distance").textContent = "—";
+  }
+}, ANIM_MS);
+</script>
+</body>
+</html>

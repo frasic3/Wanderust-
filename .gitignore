@@ -1,0 +1,12 @@
+# Build artifacts (workspace + crate-level)
+target/
+**/target/
+
+# Database SQLite (dev + journal WAL/SHM)
+georuggine.db
+georuggine.db-shm
+georuggine.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+server_cpu.log

@@ -1,0 +1,14 @@
+[package]
+name = "db"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+common = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+bcrypt = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
