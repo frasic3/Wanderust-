@@ -1,4 +1,4 @@
-# Georuggine
+# Wanderust
 
 Trip-tracking app: one server, multiple clients (CLI or browser). Live map of Turin with a vehicle moving on a road graph, user authentication and real-time chat.
 
